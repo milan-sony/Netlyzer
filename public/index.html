@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Network Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #111;
+            --card-bg: #1c1c1c;
+            --primary: #00ff88;
+            --danger: #ff4c4c;
+            --warn: #ffaa00;
+            --text: #f0f0f0;
+            --muted: #888;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            color: var(--primary);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 16px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2c2c2c;
+        }
+
+        .status span {
+            font-weight: 600;
+        }
+
+        .green {
+            color: var(--primary);
+        }
+
+        .red {
+            color: var(--danger);
+        }
+
+        .orange {
+            color: var(--warn);
+        }
+
+        .gray {
+            color: var(--muted);
+        }
+
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .buttons button {
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            padding: 10px 18px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .buttons button:hover {
+            background-color: #00cc6e;
+        }
+
+        @media (max-width: 600px) {
+            .status {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .status span {
+                margin-top: 4px;
+                font-size: 0.95rem;
+            }
+
+            header h1 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>📡 Network Monitor</h1>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h3>Live Status</h3>
+            <div class="status">Wi-Fi: <span id="wifi" class="gray">Loading...</span></div>
+            <div class="status">SSID: <span id="ssid" class="gray">-</span></div>
+            <div class="status">Signal: <span id="signal" class="gray">-</span></div>
+            <div class="status">Internet: <span id="internet" class="gray">-</span></div>
+            <div class="status">Ping: <span id="ping" class="gray">-</span></div>
+            <div class="status">Last Updated: <span id="lastUpdate" class="gray">-</span></div>
+        </div>
+
+        <div class="card">
+            <h3>Session Info</h3>
+            <div class="status">Last Session Ended: <span id="lastRun" class="gray">-</span></div>
+            <div class="status">Session Started: <span id="sessionStart" class="gray">-</span></div>
+            <div class="status">Current Time: <span id="currentTime" class="gray">-</span></div>
+        </div>
+
+        <div class="card">
+            <h3>Network Summary</h3>
+            <div class="status">Internet Uptime: <span id="uptime" class="gray">-</span></div>
+            <div class="status">Average Signal: <span id="avgSignal" class="gray">-</span></div>
+            <div class="status">Average Ping: <span id="avgPing" class="gray">-</span></div>
+            <div class="status">Longest Disconnect: <span id="longestDown" class="gray">-</span></div>
+        </div>
+
+        <div class="card buttons">
+            <button onclick="downloadPDF()">📄 Download Log PDF</button>
+            <button onclick="downloadDB()">💾 Download SQLite DB</button>
+        </div>
+    </div>
+
+    <script>
+        async function updateUI() {
+            const status = await fetch('/status').then(r => r.json());
+
+            document.getElementById('wifi').textContent = status.wifi || '-';
+            document.getElementById('wifi').className =
+                status.wifi === 'Connected' ? 'green' :
+                    status.wifi === 'Error' ? 'orange' : 'red';
+
+            document.getElementById('ssid').textContent = status.ssid || '-';
+
+            const signalEl = document.getElementById('signal');
+            if (typeof status.signal === 'number') {
+                signalEl.textContent = `${status.signal} dBm`;
+                signalEl.className =
+                    status.signal >= -67 ? 'green' :
+                        status.signal >= -80 ? 'orange' : 'red';
+            } else {
+                signalEl.textContent = '-';
+                signalEl.className = 'gray';
+            }
+
+            document.getElementById('internet').textContent = status.internet || '-';
+            document.getElementById('internet').className =
+                status.internet === 'Reachable' ? 'green' :
+                    status.internet === 'Ping Error' ? 'orange' : 'red';
+
+            const pingEl = document.getElementById('ping');
+            if (typeof status.ping === 'number') {
+                pingEl.textContent = `${status.ping} ms`;
+                pingEl.className =
+                    status.ping < 50 ? 'green' :
+                        status.ping <= 100 ? 'orange' : 'red';
+            } else {
+                pingEl.textContent = '-';
+                pingEl.className = 'gray';
+            }
+
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-US');
+        }
+
+        async function updateSummary() {
+            const summary = await fetch('/summary').then(r => r.json());
+            document.getElementById('uptime').textContent = summary.uptimePercent + " %";
+            document.getElementById('avgSignal').textContent = summary.averageSignal + " dBm" ?? '-';
+            document.getElementById('avgPing').textContent = summary.averagePing + " ms" ?? '-';
+            document.getElementById('longestDown').textContent = summary.longestDisconnect + " min";
+        }
+
+        async function updateLastRun() {
+            const data = await fetch('/last-run').then(r => r.json());
+            document.getElementById('lastRun').textContent = data.lastRunTime || 'N/A';
+        }
+
+        async function fetchSessionStart() {
+            const data = await fetch('/session-info').then(r => r.json());
+            document.getElementById('sessionStart').textContent = data.sessionStart || '-';
+        }
+
+        function startClock() {
+            setInterval(() => {
+                document.getElementById('currentTime').textContent =
+                    new Date().toLocaleString('en-US');
+            }, 1000);
+        }
+
+        function downloadPDF() {
+            window.open('/log.pdf', '_blank');
+        }
+
+        function downloadDB() {
+            window.open('/download-db', '_blank');
+        }
+
+        async function refresh() {
+            await updateUI();
+            await updateSummary();
+        }
+
+        (async function init() {
+            await fetchSessionStart();
+            await updateLastRun();
+            startClock();
+            await refresh();
+            setInterval(refresh, 5000);
+        })();
+    </script>
+</body>
+
+</html>

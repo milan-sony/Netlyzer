@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "node-wifi": "^2.0.16",
+    "pdfkit": "^0.17.1",
+    "ping": "^0.4.4",
+    "sqlite3": "^5.1.7"
+  }
+}
